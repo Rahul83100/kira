@@ -1,0 +1,21 @@
+# gitleaks configuration for Kira
+# Extends the default ruleset and allowlists known non-secret placeholders
+# (demo tokens, example values in docs) so CI doesn't flag them.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Kira placeholders and example values (not real secrets)"
+regexes = [
+  '''sk_demo_local_token''',
+  '''sk_live_test_token_123''',
+  '''sk_live_invalid_token''',
+  '''sk_live_your_token''',
+  '''sk_live_your_api_token''',
+  '''onboarding@resend\.dev''',
+]
+paths = [
+  '''\.env\.example''',
+  '''docs/api/.*\.json''',
+]
