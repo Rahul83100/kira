@@ -1,0 +1,128 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# Kira — One-command self-hosted stack
+# ══════════════════════════════════════════════════════════════════════════════
+#
+#   1. cp .env.example .env        # then paste your GEMINI_API_KEY
+#   2. docker compose up           # builds + runs everything
+#
+# That's it. The whole product comes up:
+#
+#   ┌─────────────┬───────┬──────────────────────────────────────────────┐
+#   │ Service     │ Port  │ What it is                                    │
+#   ├─────────────┼───────┼──────────────────────────────────────────────┤
+#   │ app         │ 3000  │ Ingestion API + serves the dashboard & widget │
+#   │ chat        │ 3001  │ RAG chat API (widget talks to this)           │
+#   │ worker      │   —   │ Background embedding worker (BullMQ)          │
+#   │ postgres    │ 5432  │ PostgreSQL 16 + pgvector (schema auto-applied)│
+#   │ redis       │ 6379  │ Redis 7 (queue + cache)                       │
+#   └─────────────┴───────┴──────────────────────────────────────────────┘
+#
+#   Open http://localhost:3000  → dashboard
+#   A demo tenant is pre-seeded with API token: sk_demo_local_token
+#
+# Postgres & Redis hostnames are injected automatically — you only ever need to
+# set GEMINI_API_KEY (and any optional keys) in .env.
+# ══════════════════════════════════════════════════════════════════════════════
+
+x-app-env: &app-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://kira:kira_dev_password@postgres:5432/kira
+  REDIS_URL: redis://redis:6379
+  PUBLIC_BASE_URL: http://localhost:3000
+  ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173
+
+services:
+  # ── PostgreSQL 16 + pgvector ────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: kira-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: kira
+      POSTGRES_USER: kira
+      POSTGRES_PASSWORD: kira_dev_password
+    volumes:
+      # Applied once, in alphabetical order, on first boot of an empty volume.
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kira -d kira"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Redis 7 ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: kira-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ── Ingestion API (+ serves the built dashboard & widget) ────────────────────
+  app:
+    build: .
+    image: kira-app:local
+    container_name: kira-app
+    restart: unless-stopped
+    command: node src/index.js
+    env_file: .env
+    environment:
+      <<: *app-env
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Embedding worker (BullMQ background processor) ────────────────────────────
+  worker:
+    image: kira-app:local
+    container_name: kira-worker
+    restart: unless-stopped
+    command: node src/workers/embeddingWorker.js
+    env_file: .env
+    environment:
+      <<: *app-env
+    depends_on:
+      app:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  # ── Chat API (RAG responses; the widget calls this) ──────────────────────────
+  chat:
+    image: kira-app:local
+    container_name: kira-chat
+    restart: unless-stopped
+    command: node sandra-chat-api/src/server.js
+    env_file: .env
+    environment:
+      <<: *app-env
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      app:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+    driver: local

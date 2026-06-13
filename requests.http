@@ -1,0 +1,80 @@
+### ═══════════════════════════════════════════════
+### SupportGenie — Document Ingestion API Tests
+### Use with VS Code REST Client extension
+### ═══════════════════════════════════════════════
+
+@baseUrl = http://localhost:3000
+@token = sk_live_test_token_123
+
+### ─── Health Check ──────────────────────────────
+GET {{baseUrl}}/health
+
+### ─── Upload PDF ────────────────────────────────
+POST {{baseUrl}}/api/documents/upload-pdf
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="test.pdf"
+Content-Type: application/pdf
+
+< ./test.pdf
+--boundary--
+
+### ─── Add URL ───────────────────────────────────
+POST {{baseUrl}}/api/documents/add-url
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "https://en.wikipedia.org/wiki/Artificial_intelligence"
+}
+
+### ─── Add Text ──────────────────────────────────
+POST {{baseUrl}}/api/documents/add-text
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Password Reset Guide",
+  "text": "How to reset your password: Step 1 — Go to Settings. Step 2 — Click on 'Account Security'. Step 3 — Click 'Reset Password'. Step 4 — Enter your email address. Step 5 — Check your inbox for a reset link. Step 6 — Click the link and enter a new password. Your password must be at least 8 characters long and contain a mix of letters, numbers, and symbols. If you do not receive the email within 5 minutes, check your spam folder. For further assistance, contact support@cyclecorp.in."
+}
+
+### ─── Crawl Website (async — returns 202) ───────
+POST {{baseUrl}}/api/documents/crawl-website
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "https://docs.example.com",
+  "max_pages": 10,
+  "max_depth": 3
+}
+
+### ─── Add YouTube Transcript ────────────────────
+POST {{baseUrl}}/api/documents/add-youtube
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+}
+
+### ─── Poll Document Status ──────────────────────
+GET {{baseUrl}}/api/documents/status/REPLACE_WITH_DOCUMENT_ID
+Authorization: Bearer {{token}}
+
+### ─── List Documents ────────────────────────────
+GET {{baseUrl}}/api/documents
+Authorization: Bearer {{token}}
+
+### ─── Delete Document (replace ID) ──────────────
+DELETE {{baseUrl}}/api/documents/REPLACE_WITH_DOCUMENT_ID
+Authorization: Bearer {{token}}
+
+### ─── Auth Failure — Missing Token ──────────────
+GET {{baseUrl}}/api/documents
+
+### ─── Auth Failure — Invalid Token ──────────────
+GET {{baseUrl}}/api/documents
+Authorization: Bearer sk_live_invalid_token

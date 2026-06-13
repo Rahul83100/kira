@@ -1,0 +1,6 @@
+{
+  "type": "commonjs",
+  "dependencies": {
+    "redis-memory-server": "^0.16.0"
+  }
+}

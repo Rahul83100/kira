@@ -1,0 +1,90 @@
+# ═══════════════════════════════════════════════════════════════
+# SupportGenie (Kira) — Version Control Exclusions (.gitignore)
+# ═══════════════════════════════════════════════════════════════
+
+# ── Environment Files (NEVER commit these) ────────────────────
+.env
+.env.local
+.env.production
+.env.staging
+.env.*.local
+
+# ── Sensitive Credentials & Certificates ──────────────────────
+rzp-key*.csv
+firebase-service-account.json
+*.pem
+
+# ── Dependencies ──────────────────────────────────────────────
+node_modules/
+
+# ── Build & Cache Outputs ─────────────────────────────────────
+dist/
+build/
+.vite/
+.eslintcache
+.parcel-cache
+
+# ── Logs & Debugging ──────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── OS-specific Files ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ── IDEs, Editors & Tooling ───────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.bak
+.project
+.classpath
+.settings/
+
+# ── Uploads & User Data ───────────────────────────────────────
+uploads/
+audit-logs/
+storage/
+tmp/
+*.pdf
+
+# ── Redis (Local Dev Session locks) ───────────────────────────
+.redis-port
+
+# ── AI Tooling & Assistants ───────────────────────────────────
+.aider.*
+.aider.tags.cache.v4/
+
+# ── Temporary / Workspace Debug Files ─────────────────────────
+out.txt
+rb.txt
+temp_err.txt
+status.txt
+startup*.txt
+node_procs.txt
+db_check_result.txt
+branches.txt
+conflict_files.txt
+conflict_list.md
+git-status.txt
+tunnel-url.txt
+tunnel.txt
+pinggy*.txt
+*.out.txt
+main
+
+# ── Scratch Files ─────────────────────────────────────────────
+scratch/
+
+# ── Image Generation Placeholders ─────────────────────────────
+task*.png

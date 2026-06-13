@@ -1,0 +1,48 @@
+name: 🐛 Bug report
+description: Something isn't working as expected
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to file a bug! Please fill out the sections below.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, and what you expected instead.
+      placeholder: When I ..., Kira does ..., but I expected ...
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `docker compose up`
+        2. Open http://localhost:3000
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: how-running
+    attributes:
+      label: How are you running Kira?
+      options:
+        - Docker Compose (default)
+        - Native (npm run start:all)
+        - Deployed (Railway/Render/Fly/VPS)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Output from `docker compose logs` or the terminal. (Redact any secrets!)
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: e.g. v1.0.0 or commit sha

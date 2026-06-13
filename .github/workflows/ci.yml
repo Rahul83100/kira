@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Syntax-check all backend JS
+        run: |
+          find src sandra-chat-api/src -name '*.js' -not -path '*/node_modules/*' -print0 \
+            | xargs -0 -n1 node --check
+
+      - name: Validate docker-compose
+        run: |
+          cp .env.example .env
+          echo "GEMINI_API_KEY=ci-dummy" >> .env
+          docker compose config >/dev/null
+          echo "✅ docker-compose is valid"
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

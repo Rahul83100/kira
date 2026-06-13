@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Website — Widget Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; }
+    .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 80px 20px; text-align: center; }
+    .hero h1 { font-size: 2.5rem; margin-bottom: 16px; }
+    .hero p { font-size: 1.1rem; opacity: 0.9; max-width: 600px; margin: 0 auto; }
+    .content { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px; }
+    .card h2 { font-size: 1.3rem; margin-bottom: 12px; color: #1a1a2e; }
+    .card p { line-height: 1.7; color: #555; }
+    .badge { display: inline-block; background: #e0e7ff; color: #4338ca; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <h1>🚀 Acme Corp</h1>
+    <p>This is a sample website to demonstrate how the SupportGenie chat widget embeds and works in a real page.</p>
+  </div>
+  <div class="content">
+    <div class="card">
+      <span class="badge">Product Update</span>
+      <h2>Welcome to Acme Corp</h2>
+      <p>This page simulates any customer website. The chat widget in the bottom-right corner is powered by SupportGenie. Click the purple bubble to start chatting!</p>
+    </div>
+    <div class="card">
+      <h2>How it works</h2>
+      <p>The widget loads from a single script tag. It reads configuration (agent name, color, welcome message, API token) from data attributes and creates a full chat interface. Messages are sent to the SupportGenie Chat API.</p>
+    </div>
+    <div class="card">
+      <h2>Try it out</h2>
+      <p>Click the chat bubble in the bottom-right corner. Type a question like "How do I reset my password?" to see it in action. If the Chat API (port 3001) is running, you'll get real AI-powered responses.</p>
+    </div>
+  </div>
+
+  <!-- SupportGenie Widget Embed Code -->
+  <script
+    src="http://localhost:5173/widget.js?v=2"
+    data-token="sk_live_test_token_123"
+    data-color="#6366f1"
+    data-name="Genie"
+    data-welcome="Hi there! 👋 How can I help you today?"
+    data-api="http://localhost:3001"
+  ></script>
+</body>
+</html>

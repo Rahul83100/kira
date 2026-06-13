@@ -1,0 +1,761 @@
+{
+  "info": {
+    "_postman_id": "sg-ingestion-v2-2026",
+    "name": "SupportGenie — Document Ingestion API",
+    "description": "Full API collection for the SupportGenie Document Ingestion & Vector Embedding Pipeline.\n\nEndpoints:\n- Health Check\n- Upload PDF (multipart)\n- Add URL (JSON)\n- Add Text (JSON)\n- List Documents\n- Delete Document\n- Auth Failure scenarios\n\nBase URL: http://localhost:3000\nAuth: Bearer token in Authorization header",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "sk_live_test_token_123",
+      "type": "string"
+    },
+    {
+      "key": "documentId",
+      "value": "REPLACE_WITH_DOCUMENT_ID",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health & Status",
+      "item": [
+        {
+          "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has correct structure', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.status).to.eql('ok');",
+                  "  pm.expect(json.service).to.eql('supportgenie-ingestion');",
+                  "  pm.expect(json).to.have.property('timestamp');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Quick health check to verify the ingestion API is running."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Document Ingestion",
+      "item": [
+        {
+          "name": "Upload PDF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "  pm.test('Status code is 201 (file attached)', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "  });",
+                  "",
+                  "  pm.test('Response has document_id and chunks_created', function () {",
+                  "    pm.expect(json).to.have.property('document_id');",
+                  "    pm.expect(json).to.have.property('chunks_created');",
+                  "    pm.expect(json.message).to.eql('PDF processed successfully');",
+                  "    pm.collectionVariables.set('documentId', json.document_id);",
+                  "  });",
+                  "} else if (pm.response.code === 400) {",
+                  "  pm.test('Status code is 400 — no file attached (select a PDF in Body tab)', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "  });",
+                  "",
+                  "  pm.test('Returns validation error for missing file', function () {",
+                  "    pm.expect(json).to.have.property('error');",
+                  "    pm.expect(json.error).to.include('No PDF file provided');",
+                  "  });",
+                  "} else {",
+                  "  pm.test('Unexpected status code: ' + pm.response.code, function () {",
+                  "    pm.expect.fail('Expected 201 (with file) or 400 (without file), got ' + pm.response.code);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "Select a PDF file (max 20 MB)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/upload-pdf",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "upload-pdf"]
+            },
+            "description": "Upload a PDF file to be extracted, chunked, embedded, and stored in the vector database.\n\n**Limits:**\n- Max file size: 20 MB\n- Only PDF files accepted (application/pdf)\n\n**On success:** Returns the document_id and number of chunks created."
+          },
+          "response": []
+        },
+        {
+          "name": "Add URL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has document_id and source_url', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('document_id');",
+                  "  pm.expect(json).to.have.property('source_url');",
+                  "  pm.expect(json.message).to.eql('URL processed successfully');",
+                  "",
+                  "  pm.collectionVariables.set('documentId', json.document_id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://en.wikipedia.org/wiki/Artificial_intelligence\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/add-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "add-url"]
+            },
+            "description": "Scrape a web page URL, extract readable text, chunk it, generate embeddings, and store in the vector database.\n\n**Validation:**\n- URL must be valid format\n- Only http:// and https:// protocols allowed\n- URL must return extractable text content"
+          },
+          "response": []
+        },
+        {
+          "name": "Add URL — Invalid Format",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Returns validation error', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error).to.include('Invalid URL format');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"not-a-valid-url\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/add-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "add-url"]
+            },
+            "description": "Tests that an invalid URL string is rejected with a 400 error."
+          },
+          "response": []
+        },
+        {
+          "name": "Add URL — Unsupported Protocol (ftp)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Returns protocol error', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error).to.include('Unsupported URL protocol');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"ftp://files.example.com/doc.pdf\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/add-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "add-url"]
+            },
+            "description": "Tests that non-http/https protocols are rejected."
+          },
+          "response": []
+        },
+        {
+          "name": "Add Text",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has document_id and title', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('document_id');",
+                  "  pm.expect(json).to.have.property('title');",
+                  "  pm.expect(json.message).to.eql('Text processed successfully');",
+                  "",
+                  "  pm.collectionVariables.set('documentId', json.document_id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Password Reset Guide\",\n  \"text\": \"How to reset your password: Step 1 — Go to Settings. Step 2 — Click on 'Account Security'. Step 3 — Click 'Reset Password'. Step 4 — Enter your email address. Step 5 — Check your inbox for a reset link. Step 6 — Click the link and enter a new password. Your password must be at least 8 characters long and contain a mix of letters, numbers, and symbols. If you do not receive the email within 5 minutes, check your spam folder. For further assistance, contact support@cyclecorp.in.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/add-text",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "add-text"]
+            },
+            "description": "Submit raw text content to be chunked, embedded, and stored.\n\n**Fields:**\n- `text` (required): The text content to process\n- `title` (optional): A human-readable title; defaults to 'Untitled'"
+          },
+          "response": []
+        },
+        {
+          "name": "Add YouTube Transcript",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "  pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "  });",
+                  "",
+                  "  pm.test('Response has document_id and video_id', function () {",
+                  "    pm.expect(json).to.have.property('document_id');",
+                  "    pm.expect(json).to.have.property('video_id');",
+                  "    pm.expect(json).to.have.property('chunks_created');",
+                  "    pm.collectionVariables.set('documentId', json.document_id);",
+                  "  });",
+                  "} else if (pm.response.code === 400) {",
+                  "  pm.test('Status code is 400 — invalid/missing YouTube URL', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/add-youtube",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "add-youtube"]
+            },
+            "description": "Fetch a YouTube video transcript using the youtube-transcript npm package, chunk, embed, and store.\n\n**Fields:**\n- `url` (required): A valid YouTube video URL\n\n**Validation:**\n- Must be a youtube.com or youtu.be URL\n- Video must have captions/subtitles available"
+          },
+          "response": []
+        },
+        {
+          "name": "Crawl Website (Async)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 202 Accepted', function () {",
+                  "  pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "pm.test('Response has document_id, job_id, and poll_url', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('document_id');",
+                  "  pm.expect(json).to.have.property('job_id');",
+                  "  pm.expect(json).to.have.property('poll_url');",
+                  "  pm.expect(json.status).to.eql('queued');",
+                  "  pm.collectionVariables.set('documentId', json.document_id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://docs.example.com\",\n  \"max_pages\": 10,\n  \"max_depth\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/crawl-website",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "crawl-website"]
+            },
+            "description": "Start a full website crawl using Crawlee + Playwright. Processes all internal links up to max_depth and max_pages.\n\n**Fields:**\n- `url` (required): Root URL to start crawling\n- `max_pages` (optional): Maximum pages to crawl (default: 100)\n- `max_depth` (optional): Maximum link depth from root (default: 5)\n\n**Note:** Returns 202 Accepted immediately. The crawl runs in a background BullMQ worker. Use the poll_url to check progress."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Audio (Whisper)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "",
+                  "if (pm.response.code === 202) {",
+                  "  pm.test('Status code is 202 Accepted', function () {",
+                  "    pm.response.to.have.status(202);",
+                  "  });",
+                  "",
+                  "  pm.test('Response has document_id and job_id', function () {",
+                  "    pm.expect(json).to.have.property('document_id');",
+                  "    pm.expect(json).to.have.property('job_id');",
+                  "    pm.expect(json).to.have.property('poll_url');",
+                  "    pm.collectionVariables.set('documentId', json.document_id);",
+                  "  });",
+                  "} else if (pm.response.code === 400) {",
+                  "  pm.test('400 — no audio file attached', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "Select an audio/video file (max 25 MB). Supported: mp3, wav, m4a, mp4, webm, etc."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/upload-audio",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "upload-audio"]
+            },
+            "description": "Upload an audio or video file to be transcribed using OpenAI Whisper, then chunked, embedded, and stored.\n\n**Limits:**\n- Max file size: 25 MB\n- Audio/video MIME types only\n\n**Note:** Returns 202 Accepted. Transcription runs in a background worker."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload File (Unified PDF/TXT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "",
+                  "if (pm.response.code === 202) {",
+                  "  pm.test('PDF: Status code is 202 (queued)', function () {",
+                  "    pm.response.to.have.status(202);",
+                  "    pm.expect(json.status).to.eql('queued');",
+                  "    pm.collectionVariables.set('documentId', json.document_id);",
+                  "  });",
+                  "} else if (pm.response.code === 201) {",
+                  "  pm.test('TXT: Status code is 201 (processed)', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    pm.expect(json).to.have.property('chunks_created');",
+                  "    pm.collectionVariables.set('documentId', json.document_id);",
+                  "  });",
+                  "} else if (pm.response.code === 400) {",
+                  "  pm.test('400 — validation error', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "Select a .pdf or .txt file (max 5 MB)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/upload-file",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "upload-file"]
+            },
+            "description": "Unified upload endpoint that accepts both .pdf and .txt files.\n\n- PDF files are queued for async processing (returns 202)\n- TXT files are processed synchronously (returns 201)\n\n**Limits:**\n- Max file size: 5 MB\n- Only .pdf and .txt files accepted\n- Magic byte validation for PDFs, binary detection for TXT"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Document Management",
+      "item": [
+        {
+          "name": "Poll Document Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200 or 404', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('Response has status field', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('document_id');",
+                  "    pm.expect(json).to.have.property('status');",
+                  "    pm.expect(['queued', 'processing', 'ready', 'error']).to.include(json.status);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/status/{{documentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "status", "{{documentId}}"]
+            },
+            "description": "Poll the processing status of an async document (PDF upload, crawl, audio). Use the documentId returned from an ingestion request.\n\n**Possible statuses:**\n- `queued` — waiting in BullMQ queue\n- `processing` — worker is actively embedding\n- `ready` — all chunks embedded and stored\n- `error` — processing failed (see error_message)"
+          },
+          "response": []
+        },
+        {
+          "name": "List Documents",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has count and documents array', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('count');",
+                  "  pm.expect(json).to.have.property('documents');",
+                  "  pm.expect(json.documents).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents"]
+            },
+            "description": "List all documents belonging to the authenticated customer, ordered by creation date (newest first)."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Document",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Confirms deletion', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.message).to.include('deleted');",
+                  "  pm.expect(json).to.have.property('document_id');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/{{documentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "{{documentId}}"]
+            },
+            "description": "Delete a specific document and all its associated chunks (cascade delete).\n\n**Note:** Replace `{{documentId}}` with an actual document UUID, or run an ingestion request first (the test script auto-saves the documentId variable)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth Failure Tests",
+      "item": [
+        {
+          "name": "Auth — Missing Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Note: On the integrated branch, unauthenticated GET requests",
+                  "// default to a test customer for easy browser debugging.",
+                  "// POST/DELETE requests without auth will return 401.",
+                  "pm.test('Status code is 200 or 401', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 401]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents"]
+            },
+            "description": "Tests the behavior when no Authorization header is provided.\n\nOn the integration branch, unauthenticated GET requests default to a test customer for debugging. POST/DELETE without auth will return 401."
+          },
+          "response": []
+        },
+        {
+          "name": "Auth — Invalid Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('Returns auth error', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('error');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer sk_live_invalid_token",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents"]
+            },
+            "description": "Tests that an invalid/expired API token is rejected with a 401 Unauthorized response."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

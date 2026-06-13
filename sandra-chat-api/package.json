@@ -1,0 +1,29 @@
+{
+  "name": "kira-chat-api",
+  "version": "1.0.0",
+  "description": "Kira Chat API — RAG, AI responses, and Redis caching",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "author": "Sandra — Cycle Success",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@google/genai": "^1.47.0",
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.15.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "express-rate-limit": "^8.3.2",
+    "firebase-admin": "^13.7.0",
+    "groq-sdk": "^1.1.2",
+    "ioredis": "^5.4.0",
+    "ioredis-mock": "^8.13.1",
+    "pg": "^8.20.0",
+    "resend": "^6.10.0",
+    "sentiment": "^5.0.2"
+  }
+}
