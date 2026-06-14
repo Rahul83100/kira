@@ -17,9 +17,12 @@ WORKDIR /app
 # Skip Puppeteer's bundled Chromium download — we use the system one at runtime.
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 
-# Root service deps (Ingestion API + worker)
+# Root service deps (Ingestion API + worker).
+# --omit=dev: the runtime needs only production deps; dev-only tooling (eslint,
+# vite, redis-memory-server) isn't needed here and redis-memory-server would try
+# to compile Redis (requires build tools absent from the slim image).
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --omit=dev
 
 # Chat API deps
 COPY sandra-chat-api/package*.json ./sandra-chat-api/
