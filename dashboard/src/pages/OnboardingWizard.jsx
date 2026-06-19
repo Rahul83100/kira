@@ -15,10 +15,14 @@ const TONES = [
 
 const GOALS = [
   { id: 'support', label: 'Automate Support', icon: '🤖', desc: 'Let AI handle customer questions 24/7' },
+  { id: 'leads', label: 'Capture Leads', icon: '🎯', desc: 'Collect qualified leads and contact details automatically' },
+  { id: 'both', label: 'Support + Leads', icon: '⚡', desc: 'Answer questions and turn interested visitors into leads' },
 ];
 
 const DEFAULT_INSTRUCTIONS = {
   support: "You're a helpful support assistant. Answer questions based on the knowledge base. Be clear and helpful. If you don't know the answer, politely say so and offer to connect with a human agent.",
+  leads: "You're a helpful lead qualification assistant. Ask concise follow-up questions, collect contact details when appropriate, and help visitors understand the business offering before connecting them with the team.",
+  both: "You're a helpful support and lead qualification assistant. Answer questions from the knowledge base, ask concise follow-up questions when a visitor shows buying intent, and collect contact details when appropriate.",
 };
 
 // ─── Stepper ───────────────────────────────────────────────
@@ -88,6 +92,9 @@ export default function OnboardingWizard() {
   const [crawling, setCrawling] = useState(false);
   const [crawlResult, setCrawlResult] = useState(null);
   const [crawlError, setCrawlError] = useState('');
+  const [goalError, setGoalError] = useState('');
+  const [configError, setConfigError] = useState('');
+  const [completeError, setCompleteError] = useState('');
   const [agentName, setAgentName] = useState('Kira');
   const [tone, setTone] = useState('friendly');
   const [instructions, setInstructions] = useState('');
@@ -129,9 +136,12 @@ export default function OnboardingWizard() {
       .then(r => r.json())
       .then(data => {
         if (data.onboarding_completed) { navigate('/dashboard', { replace: true }); return; }
+        const savedStep = Number(data.step);
+        if (Number.isInteger(savedStep)) setStep(Math.max(0, Math.min(savedStep, 4)));
         if (data.goal) setGoal(data.goal);
         if (data.agent_tone) setTone(data.agent_tone);
         if (data.agent_instructions) setInstructions(data.agent_instructions);
+        else if (data.goal && DEFAULT_INSTRUCTIONS[data.goal]) setInstructions(DEFAULT_INSTRUCTIONS[data.goal]);
         if (data.agent_name) setAgentName(data.agent_name);
         if (data.screenshot_url) setScreenshotUrl(data.screenshot_url);
         if (data.slug) setSlug(data.slug);
@@ -143,8 +153,19 @@ export default function OnboardingWizard() {
   // Step 1 — Save goal
   const handleGoalNext = async () => {
     if (!goal) return;
-    setInstructions(DEFAULT_INSTRUCTIONS[goal] || '');
-    try { await fetch(`${API_URL}/api/onboarding/goal`, { method: 'POST', headers, body: JSON.stringify({ goal }) }); } catch {}
+    setGoalError('');
+    const nextInstructions = DEFAULT_INSTRUCTIONS[goal] || instructions || '';
+    setInstructions(nextInstructions);
+    try {
+      const res = await fetch(`${API_URL}/api/onboarding/goal`, { method: 'POST', headers, body: JSON.stringify({ goal }) });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to save goal');
+      }
+    } catch (err) {
+      setGoalError(err.message || 'Failed to save goal. Please try again.');
+      return;
+    }
     setStep(1);
   };
 
@@ -163,18 +184,36 @@ export default function OnboardingWizard() {
 
   // Step 3 — Save config
   const handleConfigNext = async () => {
-    try { await fetch(`${API_URL}/api/onboarding/configure-agent`, { method: 'POST', headers, body: JSON.stringify({ agent_name: agentName, tone, instructions }) }); } catch {}
+    setConfigError('');
+    try {
+      const res = await fetch(`${API_URL}/api/onboarding/configure-agent`, { method: 'POST', headers, body: JSON.stringify({ agent_name: agentName, tone, instructions }) });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to save agent config');
+      }
+    } catch (err) {
+      setConfigError(err.message || 'Failed to save agent config. Please try again.');
+      return;
+    }
     setStep(3);
   };
 
   // Step 5 — Complete
   const handleComplete = async () => {
     setCompleting(true);
+    setCompleteError('');
     try {
-      await fetch(`${API_URL}/api/onboarding/complete`, { method: 'POST', headers });
+      const res = await fetch(`${API_URL}/api/onboarding/complete`, { method: 'POST', headers });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to complete onboarding');
+      }
       if (refreshUser) await refreshUser();
       navigate('/dashboard', { replace: true });
-    } catch { setCompleting(false); }
+    } catch (err) {
+      setCompleteError(err.message || 'Failed to launch Kira. Please try again.');
+      setCompleting(false);
+    }
   };
 
   const embedCode = `<script\n  src="${window.location.origin}/widget.js"\n  data-token="${token || 'loading...'}"\n  data-color="${color}"\n  data-name="${agentName}"\n  data-api="${CHAT_API_URL}"\n></script>`;
@@ -225,6 +264,7 @@ export default function OnboardingWizard() {
                     </button>
                   ))}
                 </div>
+                {goalError && <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400">{goalError}</div>}
                 <button onClick={handleGoalNext} disabled={!goal}
                   className={`w-full py-3.5 rounded-xl text-sm font-bold transition-all duration-200 ${goal ? 'bg-brand-500 text-black hover:bg-brand-400 shadow-lg shadow-brand-500/25' : 'bg-white/5 text-white/30 cursor-not-allowed'}`}>
                   Next →
@@ -310,6 +350,7 @@ export default function OnboardingWizard() {
                     <textarea value={instructions} onChange={e => setInstructions(e.target.value)} rows={4} placeholder="Tell Kira how to behave..."
                       className="w-full px-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 transition-all resize-none" />
                   </div>
+                  {configError && <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400">{configError}</div>}
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setStep(1)} className="px-6 py-3.5 rounded-xl text-sm font-medium text-white/50 border border-white/10 hover:bg-white/5 transition-all">Back</button>
@@ -478,6 +519,7 @@ export default function OnboardingWizard() {
                 <div className="px-4 py-3 bg-brand-500/5 border border-brand-500/10 rounded-xl text-xs text-white/50">
                   <p><span className="text-brand-400 font-semibold">🎁 Free Trial:</span> Your 7-day trial with 100 AI messages starts when you launch.</p>
                 </div>
+                {completeError && <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400">{completeError}</div>}
                 <div className="flex gap-3">
                   <button onClick={() => setStep(3)} className="px-6 py-3.5 rounded-xl text-sm font-medium text-white/50 border border-white/10 hover:bg-white/5 transition-all">Back</button>
                   <button onClick={handleComplete} disabled={completing}
